@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: bank-api
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/bank}
+    username: ${SPRING_DATASOURCE_USERNAME:bank}
+    password: ${SPRING_DATASOURCE_PASSWORD:bank}
+  flyway:
+    enabled: true
+  jooq:
+    sql-dialect: POSTGRES
+
+bank:
+  outbox:
+    scheduler-enabled: ${BANK_OUTBOX_SCHEDULER_ENABLED:false}
+    poll-interval-ms: ${BANK_OUTBOX_POLL_INTERVAL_MS:1000}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui/index.html
+

@@ -1,6 +1,7 @@
 package dev.hambacon.bank.adapter.in.web;
 
 import dev.hambacon.bank.application.BankingService;
+import dev.hambacon.bank.domain.Money;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,7 +49,7 @@ public class AccountController {
             @RequestHeader("Idempotency-Key") String key,
             @Valid @RequestBody AmountRequest request
     ) {
-        return ResponseEntity.status(201).body(OperationResponse.from(bankingService.deposit(accountId, request.amountMinor(), key)));
+        return ResponseEntity.status(201).body(OperationResponse.from(bankingService.deposit(accountId, Money.of(request.amountMinor()), key)));
     }
 
     @PostMapping("/{accountId}/withdrawals")
@@ -57,7 +58,6 @@ public class AccountController {
             @RequestHeader("Idempotency-Key") String key,
             @Valid @RequestBody AmountRequest request
     ) {
-        return ResponseEntity.status(201).body(OperationResponse.from(bankingService.withdraw(accountId, request.amountMinor(), key)));
+        return ResponseEntity.status(201).body(OperationResponse.from(bankingService.withdraw(accountId, Money.of(request.amountMinor()), key)));
     }
 }
-

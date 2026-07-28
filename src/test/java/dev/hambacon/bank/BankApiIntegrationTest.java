@@ -162,6 +162,35 @@ class BankApiIntegrationTest {
     }
 
     @Test
+    void 外部連携の一時失敗後に再試行すると振込が完了する() {
+        var source = createAccount("A-109");
+        var destination = createAccount("A-110");
+        postAmount("/api/accounts/" + source.id() + "/deposits", 1_000, "deposit-retry");
+        var response = createTransfer(source.id(), destination.id(), 600, "transfer-retry");
+
+        externalSettlementAdapter.failNextRetryably();
+        assertThat(outboxProcessor.processOne()).isTrue();
+
+        var scheduledRetry = jdbcTemplate.queryForMap(
+                "SELECT status, attempts FROM outbox_events WHERE aggregate_id = ?", response.getBody().id());
+        assertThat(scheduledRetry.get("status")).isEqualTo("PENDING");
+        assertThat(((Number) scheduledRetry.get("attempts")).intValue()).isEqualTo(1);
+
+        jdbcTemplate.update("UPDATE outbox_events SET available_at = CURRENT_TIMESTAMP WHERE aggregate_id = ?",
+                response.getBody().id());
+        assertThat(outboxProcessor.processOne()).isTrue();
+
+        assertThat(getTransfer(response.getBody().id()).getBody().status()).isEqualTo("COMPLETED");
+        assertThat(getAccount(source.id()).balanceMinor()).isEqualTo(400);
+        assertThat(getAccount(source.id()).reservedMinor()).isZero();
+        assertThat(getAccount(destination.id()).balanceMinor()).isEqualTo(600);
+        assertThat(externalSettlementAdapter.attemptCount()).isEqualTo(2);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT status FROM outbox_events WHERE aggregate_id = ?", String.class, response.getBody().id()))
+                .isEqualTo("DONE");
+    }
+
+    @Test
     void 同時出金では一方だけが成功し残高が負にならない() throws Exception {
         var account = createAccount("A-106");
         postAmount("/api/accounts/" + account.id() + "/deposits", 1_000, "deposit-concurrency");

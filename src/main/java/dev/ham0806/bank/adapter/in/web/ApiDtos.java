@@ -51,7 +51,7 @@ public final class ApiDtos {
             long balanceMinor
     ) {
         public static OperationResponse from(BankingService.OperationResult result) {
-            return new OperationResponse(result.transactionId(), result.accountId(), result.amountMinor(), result.balanceMinor());
+            return new OperationResponse(result.transactionId(), result.accountId(), result.amount().minor(), result.balanceMinor());
         }
     }
 
@@ -64,7 +64,7 @@ public final class ApiDtos {
     ) {
         public static TransferResponse from(Transfer transfer) {
             return new TransferResponse(transfer.id(), transfer.sourceAccountId(), transfer.destinationAccountId(),
-                    transfer.amountMinor(), transfer.status().name());
+                    transfer.amount().minor(), transfer.status().name());
         }
     }
 
@@ -81,4 +81,3 @@ public final class ApiDtos {
         }
     }
 }
-

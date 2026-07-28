@@ -6,21 +6,20 @@ public record Transfer(
         UUID id,
         UUID sourceAccountId,
         UUID destinationAccountId,
-        long amountMinor,
+        Money amount,
         TransferStatus status
 ) {
     public Transfer complete() {
         if (status != TransferStatus.PENDING) {
             throw new InvalidTransferStateException("PENDING以外の振込は完了できません");
         }
-        return new Transfer(id, sourceAccountId, destinationAccountId, amountMinor, TransferStatus.COMPLETED);
+        return new Transfer(id, sourceAccountId, destinationAccountId, amount, TransferStatus.COMPLETED);
     }
 
     public Transfer fail() {
         if (status != TransferStatus.PENDING) {
             throw new InvalidTransferStateException("PENDING以外の振込は失敗にできません");
         }
-        return new Transfer(id, sourceAccountId, destinationAccountId, amountMinor, TransferStatus.FAILED);
+        return new Transfer(id, sourceAccountId, destinationAccountId, amount, TransferStatus.FAILED);
     }
 }
-

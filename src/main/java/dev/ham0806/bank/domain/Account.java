@@ -14,37 +14,37 @@ public record Account(
         return balanceMinor - reservedMinor;
     }
 
-    public Account reserve(long amountMinor) {
-        requirePositive(amountMinor);
+    public Account reserve(Money amount) {
+        var amountMinor = amount.minor();
         if (availableMinor() < amountMinor) {
             throw new InsufficientFundsException("利用可能残高が不足しています");
         }
         return new Account(id, accountNumber, balanceMinor, Math.addExact(reservedMinor, amountMinor), version + 1, status);
     }
 
-    public Account releaseReservation(long amountMinor) {
-        requirePositive(amountMinor);
+    public Account releaseReservation(Money amount) {
+        var amountMinor = amount.minor();
         if (reservedMinor < amountMinor) {
             throw new IllegalStateException("予約残高が不整合です");
         }
         return new Account(id, accountNumber, balanceMinor, reservedMinor - amountMinor, version + 1, status);
     }
 
-    public Account deposit(long amountMinor) {
-        requirePositive(amountMinor);
+    public Account deposit(Money amount) {
+        var amountMinor = amount.minor();
         return new Account(id, accountNumber, Math.addExact(balanceMinor, amountMinor), reservedMinor, version + 1, status);
     }
 
-    public Account withdraw(long amountMinor) {
-        requirePositive(amountMinor);
+    public Account withdraw(Money amount) {
+        var amountMinor = amount.minor();
         if (availableMinor() < amountMinor) {
             throw new InsufficientFundsException("利用可能残高が不足しています");
         }
         return new Account(id, accountNumber, balanceMinor - amountMinor, reservedMinor, version + 1, status);
     }
 
-    public Account settleReservedDebit(long amountMinor) {
-        requirePositive(amountMinor);
+    public Account settleReservedDebit(Money amount) {
+        var amountMinor = amount.minor();
         if (reservedMinor < amountMinor || balanceMinor < amountMinor) {
             throw new IllegalStateException("振込予約を確定できません");
         }
@@ -62,9 +62,4 @@ public record Account(
         return new Account(id, accountNumber, updatedBalance, reservedMinor, version + 1, status);
     }
 
-    private static void requirePositive(long amountMinor) {
-        if (amountMinor <= 0) {
-            throw new InvalidAmountException("金額は1以上でなければなりません");
-        }
-    }
 }

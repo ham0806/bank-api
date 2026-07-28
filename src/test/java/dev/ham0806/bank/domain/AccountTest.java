@@ -12,7 +12,7 @@ class AccountTest {
 
     @Test
     void 入金すると残高とバージョンが増える() {
-        var updated = account.deposit(500);
+        var updated = account.deposit(Money.of(500));
 
         assertThat(updated.balanceMinor()).isEqualTo(1_500);
         assertThat(updated.version()).isEqualTo(1);
@@ -20,23 +20,22 @@ class AccountTest {
 
     @Test
     void 利用可能残高を超える出金は拒否する() {
-        assertThatThrownBy(() -> account.withdraw(1_001))
+        assertThatThrownBy(() -> account.withdraw(Money.of(1_001)))
                 .isInstanceOf(InsufficientFundsException.class);
     }
 
     @Test
     void 金額0は拒否する() {
-        assertThatThrownBy(() -> account.deposit(0))
+        assertThatThrownBy(() -> account.deposit(Money.of(0)))
                 .isInstanceOf(InvalidAmountException.class);
     }
 
     @Test
     void 予約額を確定すると残高と予約額が減る() {
-        var reserved = account.reserve(400);
-        var settled = reserved.settleReservedDebit(400);
+        var reserved = account.reserve(Money.of(400));
+        var settled = reserved.settleReservedDebit(Money.of(400));
 
         assertThat(settled.balanceMinor()).isEqualTo(600);
         assertThat(settled.reservedMinor()).isZero();
     }
 }
-

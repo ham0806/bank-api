@@ -7,7 +7,7 @@ import dev.hambacon.bank.adapter.in.web.ApiDtos.CreateTransferRequest;
 import dev.hambacon.bank.adapter.in.web.ApiDtos.OperationResponse;
 import dev.hambacon.bank.adapter.in.web.ApiDtos.TransferResponse;
 import dev.hambacon.bank.adapter.out.integration.MockExternalSettlementAdapter;
-import dev.hambacon.bank.worker.OutboxProcessor;
+import dev.hambacon.bank.adapter.in.scheduler.OutboxProcessor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -176,8 +176,10 @@ class BankApiIntegrationTest {
         assertThat(scheduledRetry.get("status")).isEqualTo("PENDING");
         assertThat(((Number) scheduledRetry.get("attempts")).intValue()).isEqualTo(1);
 
-        jdbcTemplate.update("UPDATE outbox_events SET available_at = CURRENT_TIMESTAMP WHERE aggregate_id = ?",
+        var madeAvailable = jdbcTemplate.update(
+                "UPDATE outbox_events SET available_at = TIMESTAMPTZ '1970-01-01 00:00:00+00' WHERE aggregate_id = ?",
                 response.getBody().id());
+        assertThat(madeAvailable).isEqualTo(1);
         assertThat(outboxProcessor.processOne()).isTrue();
 
         assertThat(getTransfer(response.getBody().id()).getBody().status()).isEqualTo("COMPLETED");

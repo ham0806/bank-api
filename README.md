@@ -91,6 +91,30 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/transfers `
 
 ## 設計上の要点
 
+### Clean Architecture
+
+依存の向きは Adapter → Application → Domain です。
+
+```text
+adapter.in.web / adapter.in.scheduler
+        │ 入力ポート
+        ▼
+application.service
+        │ 出力ポート
+        ▼
+adapter.out.persistence / adapter.out.integration
+
+domain  ← application が利用する。外側へは依存しない
+```
+
+- `domain`: 口座、振込、仕訳の業務ルール
+- `application.port.in`: Webやスケジューラが呼ぶユースケース
+- `application.port.out`: 口座・仕訳・冪等性・Outbox・外部決済の契約
+- `adapter.in`: HTTPと定期実行。入力ポートだけを呼ぶ
+- `adapter.out`: jOOQと模擬外部金融機関。出力ポートを実装する
+
+パッケージ境界はArchUnitで確認します。
+
 ### 冪等性
 
 入金・出金・振込は `Idempotency-Key` とリクエストハッシュを保存します。同じキー・同じ内容は既存リソースを返し、同じキー・異なる内容は `409 Conflict` とします。一意制約を最後の防衛線にしています。

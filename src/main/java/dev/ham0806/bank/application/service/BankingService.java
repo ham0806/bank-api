@@ -1,6 +1,19 @@
-package dev.ham0806.bank.application;
+package dev.ham0806.bank.application.service;
 
+import dev.ham0806.bank.application.BankingException;
+import dev.ham0806.bank.application.IdempotencyConflictException;
+import dev.ham0806.bank.application.RequestHasher;
+import dev.ham0806.bank.application.ResourceNotFoundException;
+import dev.ham0806.bank.application.port.in.AccountUseCase;
+import dev.ham0806.bank.application.port.in.SettleTransferUseCase;
+import dev.ham0806.bank.application.port.in.TransferUseCase;
+import dev.ham0806.bank.application.port.out.AccountRepository;
+import dev.ham0806.bank.application.port.out.IdempotencyRepository;
+import dev.ham0806.bank.application.port.out.LedgerRepository;
+import dev.ham0806.bank.application.port.out.OutboxRepository;
+import dev.ham0806.bank.application.port.out.TransferRepository;
 import dev.ham0806.bank.domain.Account;
+import dev.ham0806.bank.domain.AccountStatus;
 import dev.ham0806.bank.domain.LedgerLine;
 import dev.ham0806.bank.domain.Transfer;
 import dev.ham0806.bank.domain.TransferStatus;
@@ -11,7 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-public class BankingService {
+public class BankingService implements AccountUseCase, TransferUseCase, SettleTransferUseCase {
     private static final UUID SYSTEM_ACCOUNT_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     private final AccountRepository accountRepository;
@@ -30,23 +43,30 @@ public class BankingService {
         this.outboxRepository = outboxRepository;
     }
 
+    @Override
     @Transactional
     public Account createAccount(String accountNumber) {
         return accountRepository.create(accountNumber);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public Account getAccount(UUID accountId) {
         return accountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("口座が見つかりません: " + accountId));
     }
 
+    @Override
     @Transactional(readOnly = true)
-    public List<LedgerRepository.TransactionView> getTransactions(UUID accountId) {
+    public List<TransactionView> getTransactions(UUID accountId) {
         getAccount(accountId);
-        return ledgerRepository.findByAccountId(accountId);
+        return ledgerRepository.findByAccountId(accountId).stream()
+                .map(view -> new TransactionView(
+                        view.transactionId(), view.referenceId(), view.kind(), view.amountMinor(), view.createdAt()))
+                .toList();
     }
 
+    @Override
     @Transactional
     public OperationResult deposit(UUID accountId, long amountMinor, String key) {
         requireKey(key);
@@ -68,6 +88,7 @@ public class BankingService {
         return new OperationResult(resourceId, accountId, amountMinor, updated.balanceMinor());
     }
 
+    @Override
     @Transactional
     public OperationResult withdraw(UUID accountId, long amountMinor, String key) {
         requireKey(key);
@@ -89,6 +110,7 @@ public class BankingService {
         return new OperationResult(resourceId, accountId, amountMinor, updated.balanceMinor());
     }
 
+    @Override
     @Transactional
     public Transfer acceptTransfer(UUID sourceAccountId, UUID destinationAccountId, long amountMinor, String key) {
         requireKey(key);
@@ -114,12 +136,14 @@ public class BankingService {
         return transfer;
     }
 
+    @Override
     @Transactional(readOnly = true)
     public Transfer getTransfer(UUID transferId) {
         return transferRepository.findById(transferId)
                 .orElseThrow(() -> new ResourceNotFoundException("振込が見つかりません: " + transferId));
     }
 
+    @Override
     @Transactional
     public void completeTransfer(UUID transferId) {
         var transfer = transferRepository.findByIdForUpdate(transferId);
@@ -136,6 +160,7 @@ public class BankingService {
         idempotencyRepository.updateStatusForResource(transfer.id(), "COMPLETED");
     }
 
+    @Override
     @Transactional
     public void failTransfer(UUID transferId) {
         var transfer = transferRepository.findByIdForUpdate(transferId);
@@ -174,10 +199,8 @@ public class BankingService {
     }
 
     private static void requireCustomerAccount(Account account) {
-        if (account.status() != dev.ham0806.bank.domain.AccountStatus.ACTIVE) {
+        if (account.status() != AccountStatus.ACTIVE) {
             throw new BankingException("システム口座は顧客向け操作に利用できません");
         }
     }
-
-    public record OperationResult(UUID transactionId, UUID accountId, long amountMinor, long balanceMinor) {}
 }

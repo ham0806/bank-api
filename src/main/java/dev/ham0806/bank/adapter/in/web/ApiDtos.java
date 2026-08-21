@@ -1,7 +1,6 @@
 package dev.ham0806.bank.adapter.in.web;
 
-import dev.ham0806.bank.application.BankingService;
-import dev.ham0806.bank.application.LedgerRepository;
+import dev.ham0806.bank.application.port.in.AccountUseCase;
 import dev.ham0806.bank.domain.Account;
 import dev.ham0806.bank.domain.Transfer;
 
@@ -50,7 +49,7 @@ public final class ApiDtos {
             long amountMinor,
             long balanceMinor
     ) {
-        public static OperationResponse from(BankingService.OperationResult result) {
+        public static OperationResponse from(AccountUseCase.OperationResult result) {
             return new OperationResponse(result.transactionId(), result.accountId(), result.amountMinor(), result.balanceMinor());
         }
     }
@@ -75,10 +74,9 @@ public final class ApiDtos {
             long amountMinor,
             OffsetDateTime createdAt
     ) {
-        public static TransactionResponse from(LedgerRepository.TransactionView view) {
+        public static TransactionResponse from(AccountUseCase.TransactionView view) {
             return new TransactionResponse(view.transactionId(), view.referenceId(), view.kind(),
                     view.amountMinor(), view.createdAt());
         }
     }
 }
-

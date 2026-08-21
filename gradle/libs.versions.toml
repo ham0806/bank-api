@@ -3,6 +3,7 @@ spring-boot = "4.1.0"
 jooq = "3.21.6"
 flyway = "13.0.0"
 springdoc = "3.0.1"
+archunit = "1.5.0"
 
 [libraries]
 springdoc-openapi = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
@@ -12,6 +13,7 @@ jooq-meta = { module = "org.jooq:jooq-meta", version.ref = "jooq" }
 jooq-meta-extensions = { module = "org.jooq:jooq-meta-extensions", version.ref = "jooq" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
 flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

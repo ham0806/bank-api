@@ -1,4 +1,4 @@
-package dev.ham0806.bank.application;
+package dev.ham0806.bank.application.port.out;
 
 import dev.ham0806.bank.domain.Transfer;
 
@@ -7,8 +7,10 @@ import java.util.UUID;
 
 public interface TransferRepository {
     void insert(Transfer transfer);
+
     Optional<Transfer> findById(UUID transferId);
+
     Transfer findByIdForUpdate(UUID transferId);
+
     void update(Transfer transfer);
 }
-

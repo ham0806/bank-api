@@ -100,6 +100,10 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/transfers `
 `accounts.balance_minor` は照会用の現在残高です。根拠となる記録は `ledger_transactions` と `ledger_entries` であり、残高更新と仕訳登録は同一トランザクションで実行します。
 入出金では顧客口座と`SYSTEM-CLEARING`口座へ相反する仕訳を作成し、清算口座の残高も同じトランザクションで更新します。
 
+### Money値オブジェクト
+
+正の取引金額はドメイン層の`Money`値オブジェクトで表現します。HTTP DTOとPostgreSQLでは既存契約に合わせて`long`を使い、ControllerとPersistence Adapterで変換します。確定残高は0を取り得て、清算口座は負残高を取り得るため、残高そのものは`long`として扱います。
+
 ### 同時実行制御
 
 入出金では対象口座を `FOR UPDATE` でロックします。振込では送金元と送金先をUUID順にロックし、ロック順序を統一します。

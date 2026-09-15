@@ -1,6 +1,7 @@
 package dev.hambacon.bank.adapter.in.web;
 
 import dev.hambacon.bank.application.BankingService;
+import dev.hambacon.bank.domain.Money;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,7 +32,8 @@ public class TransferController {
             @RequestHeader("Idempotency-Key") String key,
             @Valid @RequestBody CreateTransferRequest request
     ) {
-        var transfer = bankingService.acceptTransfer(request.sourceAccountId(), request.destinationAccountId(), request.amountMinor(), key);
+        var transfer = bankingService.acceptTransfer(request.sourceAccountId(), request.destinationAccountId(),
+                Money.of(request.amountMinor()), key);
         return ResponseEntity.accepted()
                 .location(URI.create("/api/transfers/" + transfer.id()))
                 .body(TransferResponse.from(transfer));
@@ -42,4 +44,3 @@ public class TransferController {
         return TransferResponse.from(bankingService.getTransfer(transferId));
     }
 }
-

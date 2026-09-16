@@ -1,4 +1,4 @@
-package dev.hambacon.bank.application;
+package dev.hambacon.bank.application.port.out;
 
 import dev.hambacon.bank.domain.Transfer;
 
@@ -7,4 +7,3 @@ public interface ExternalSettlementPort {
 
     enum Result { SUCCESS, RETRYABLE_FAILURE, PERMANENT_FAILURE }
 }
-

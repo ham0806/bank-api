@@ -1,6 +1,6 @@
 package dev.hambacon.bank.adapter.in.web;
 
-import dev.hambacon.bank.application.BankingService;
+import dev.hambacon.bank.application.port.in.TransferUseCase;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,10 +20,10 @@ import static dev.hambacon.bank.adapter.in.web.ApiDtos.TransferResponse;
 @RestController
 @RequestMapping("/api/transfers")
 public class TransferController {
-    private final BankingService bankingService;
+    private final TransferUseCase transferUseCase;
 
-    public TransferController(BankingService bankingService) {
-        this.bankingService = bankingService;
+    public TransferController(TransferUseCase transferUseCase) {
+        this.transferUseCase = transferUseCase;
     }
 
     @PostMapping
@@ -31,7 +31,8 @@ public class TransferController {
             @RequestHeader("Idempotency-Key") String key,
             @Valid @RequestBody CreateTransferRequest request
     ) {
-        var transfer = bankingService.acceptTransfer(request.sourceAccountId(), request.destinationAccountId(), request.amountMinor(), key);
+        var transfer = transferUseCase.acceptTransfer(
+                request.sourceAccountId(), request.destinationAccountId(), request.amountMinor(), key);
         return ResponseEntity.accepted()
                 .location(URI.create("/api/transfers/" + transfer.id()))
                 .body(TransferResponse.from(transfer));
@@ -39,7 +40,6 @@ public class TransferController {
 
     @GetMapping("/{transferId}")
     public TransferResponse get(@PathVariable UUID transferId) {
-        return TransferResponse.from(bankingService.getTransfer(transferId));
+        return TransferResponse.from(transferUseCase.getTransfer(transferId));
     }
 }
-

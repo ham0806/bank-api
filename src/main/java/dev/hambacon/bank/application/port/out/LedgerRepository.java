@@ -1,4 +1,4 @@
-package dev.hambacon.bank.application;
+package dev.hambacon.bank.application.port.out;
 
 import dev.hambacon.bank.domain.LedgerLine;
 
@@ -8,9 +8,14 @@ import java.util.UUID;
 
 public interface LedgerRepository {
     UUID post(UUID referenceId, String kind, List<LedgerLine> lines);
+
     List<TransactionView> findByAccountId(UUID accountId);
 
-    record TransactionView(UUID transactionId, UUID referenceId, String kind, long amountMinor,
-                           OffsetDateTime createdAt) {}
+    record TransactionView(
+            UUID transactionId,
+            UUID referenceId,
+            String kind,
+            long amountMinor,
+            OffsetDateTime createdAt
+    ) {}
 }
-

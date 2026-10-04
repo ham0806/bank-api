@@ -92,6 +92,49 @@ class ProcessOutboxServiceTest {
         verify(outboxRepository).markFailed(event.id(), "外部連携に失敗しました");
     }
 
+    @Test
+    void 外部連携が例外を投げても試行回数を計上してリトライする() {
+        var transfer = pendingTransfer();
+        var event = event(transfer.id(), 0);
+        when(outboxRepository.claimNext(NOW, NOW.plusMinutes(1))).thenReturn(Optional.of(event));
+        when(transferRepository.findById(transfer.id())).thenReturn(Optional.of(transfer));
+        when(externalSettlementPort.settle(transfer)).thenThrow(new IllegalStateException("接続失敗"));
+
+        assertThat(processOutboxService.processOne()).isTrue();
+
+        verify(outboxRepository).scheduleRetry(event.id(), 1, NOW.plusSeconds(1),
+                "処理中の例外: java.lang.IllegalStateException: 接続失敗");
+        verifyNoInteractions(settleTransferUseCase);
+    }
+
+    @Test
+    void 例外が再試行上限に達したら振込を失敗させて予約を解除する() {
+        var transfer = pendingTransfer();
+        var event = event(transfer.id(), 2);
+        when(outboxRepository.claimNext(NOW, NOW.plusMinutes(1))).thenReturn(Optional.of(event));
+        when(transferRepository.findById(transfer.id())).thenReturn(Optional.of(transfer));
+        when(externalSettlementPort.settle(transfer)).thenThrow(new IllegalStateException("接続失敗"));
+
+        assertThat(processOutboxService.processOne()).isTrue();
+
+        verify(settleTransferUseCase).failTransfer(transfer.id());
+        verify(outboxRepository).markFailed(event.id(), "処理中の例外: java.lang.IllegalStateException: 接続失敗");
+    }
+
+    @Test
+    void 上限到達時に振込を取得できなければ予約解除せずFAILEDにする() {
+        var event = event(UUID.randomUUID(), 2);
+        when(outboxRepository.claimNext(NOW, NOW.plusMinutes(1))).thenReturn(Optional.of(event));
+        when(transferRepository.findById(event.aggregateId())).thenReturn(Optional.empty());
+
+        assertThat(processOutboxService.processOne()).isTrue();
+
+        verify(outboxRepository).markFailed(event.id(),
+                "処理中の例外: dev.hambacon.bank.application.ResourceNotFoundException: 振込が見つかりません: "
+                        + event.aggregateId());
+        verifyNoInteractions(settleTransferUseCase);
+    }
+
     private static Transfer pendingTransfer() {
         return new Transfer(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 600, TransferStatus.PENDING);
     }

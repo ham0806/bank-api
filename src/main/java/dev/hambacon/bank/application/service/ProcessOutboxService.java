@@ -6,6 +6,7 @@ import dev.hambacon.bank.application.port.in.SettleTransferUseCase;
 import dev.hambacon.bank.application.port.out.ExternalSettlementPort;
 import dev.hambacon.bank.application.port.out.OutboxRepository;
 import dev.hambacon.bank.application.port.out.TransferRepository;
+import dev.hambacon.bank.domain.Transfer;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -43,17 +44,34 @@ public class ProcessOutboxService implements ProcessOutboxUseCase {
             return false;
         }
         var claimed = event.get();
-        var transfer = transferRepository.findById(claimed.aggregateId())
-                .orElseThrow(() -> new ResourceNotFoundException("振込が見つかりません: " + claimed.aggregateId()));
-        var result = externalSettlementPort.settle(transfer);
-        if (result == ExternalSettlementPort.Result.SUCCESS) {
-            settleTransferUseCase.completeTransfer(transfer.id());
-            outboxRepository.markDone(claimed.id());
-        } else if (result == ExternalSettlementPort.Result.RETRYABLE_FAILURE && claimed.attempts() + 1 < MAX_ATTEMPTS) {
-            outboxRepository.scheduleRetry(claimed.id(), claimed.attempts() + 1, now.plusSeconds(1), "外部連携の一時失敗");
-        } else {
-            settleTransferUseCase.failTransfer(transfer.id());
-            outboxRepository.markFailed(claimed.id(), "外部連携に失敗しました");
+        Transfer transfer = null;
+        try {
+            transfer = transferRepository.findById(claimed.aggregateId())
+                    .orElseThrow(() -> new ResourceNotFoundException("振込が見つかりません: " + claimed.aggregateId()));
+            var result = externalSettlementPort.settle(transfer);
+            if (result == ExternalSettlementPort.Result.SUCCESS) {
+                settleTransferUseCase.completeTransfer(transfer.id());
+                outboxRepository.markDone(claimed.id());
+            } else if (result == ExternalSettlementPort.Result.RETRYABLE_FAILURE && claimed.attempts() + 1 < MAX_ATTEMPTS) {
+                outboxRepository.scheduleRetry(claimed.id(), claimed.attempts() + 1, now.plusSeconds(1), "外部連携の一時失敗");
+            } else {
+                settleTransferUseCase.failTransfer(transfer.id());
+                outboxRepository.markFailed(claimed.id(), "外部連携に失敗しました");
+            }
+        } catch (Exception e) {
+            var error = "処理中の例外: " + e;
+            if (claimed.attempts() + 1 < MAX_ATTEMPTS) {
+                outboxRepository.scheduleRetry(claimed.id(), claimed.attempts() + 1, now.plusSeconds(1), error);
+            } else {
+                if (transfer != null) {
+                    try {
+                        settleTransferUseCase.failTransfer(transfer.id());
+                    } catch (Exception releaseFailure) {
+                        error += "（予約解除も失敗: " + releaseFailure + "）";
+                    }
+                }
+                outboxRepository.markFailed(claimed.id(), error);
+            }
         }
         return true;
     }
